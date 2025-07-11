@@ -69,9 +69,9 @@ async def processar_documento(arquivo: UploadFile = File(...)):
                         },
                         {
                             "text": """
-                            Você está recebendo uma imagem relativa à notas finais do semestre de uma faculdade.
-                            A imagem contém notas de dois estudantes, o que pode ser visto na primeira coluna "Nome do Aluno".
-                            A primeira metade da imagem pra cima é do aluno X, e a segunda metade da imagem pra baixo é do aluno Y
+                            Você está recebendo um documeto relativo à notas finais do semestre de uma faculdade.
+                            Cada página do documento contém notas de dois estudantes, o que pode ser visto na primeira coluna "Nome do Aluno".
+                            A primeira metade da página pra cima é do aluno X, e a segunda metade da página pra baixo é do aluno Y
                             Retorne para mim os seguintes dados formatados assim:
                             [
                                 {
@@ -91,7 +91,7 @@ async def processar_documento(arquivo: UploadFile = File(...)):
                             
                             Preste atenção na coluna "Resultado Final". Caso o resultado seja "EVADIDO", colocar os campos "frequencias" e "notas" como [0] (array com um único campo 0).
 
-                            Faça isso para tanto o aluno X quanto o aluno Y, e não retorne nenhum texto adicional além do resultado passado no formato que especifiquei.
+                            Faça isso para tanto o aluno X quanto o aluno Y de cada página, e não retorne nenhum texto adicional além do resultado passado no formato que especifiquei.
                         """
                         },
                     ]

@@ -6,6 +6,8 @@ import requests
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import pandas as pd
+from datetime import datetime
 
 # Instancia uma aplicação FastAPI
 app = FastAPI(
@@ -34,14 +36,55 @@ async def processar_documento(arquivo: UploadFile = File(...)):
     Função destinada para envio de arquivo / processamento via Gemini dos mesmos
 
     Parâmetros:
-        arquivo (UploadFile): Imagem da nota fiscal enviada via API.
+        arquivo (UploadFile): Imagem do boletim de notas enviado via API.
 
     Retorno:
         JSON no seguinte formato:
         {
-            "Valor": "R$XXX.XX",
-            "CNPJ": "XX.XXX.XXX/XXXX-XX",
-            "Data": "YYYY/MM/DD"
+            "payload": [
+                {
+                    "nome": "José Ruela",
+                    "media_frequencia": 97.28571428571429,
+                    "media_notas": 82
+                },
+                {
+                    "nome": "João Ninguém",
+                    "media_frequencia": 0,
+                    "media_notas": 0
+                }
+            ],
+            "dados_brutos": [
+                {
+                    "nome_aluno": "José Ruela",
+                    "frequencias": [
+                        96,
+                        95,
+                        90,
+                        100,
+                        100,
+                        100,
+                        100
+                    ],
+                    "notas": [
+                        85,
+                        89,
+                        89,
+                        80,
+                        60,
+                        85,
+                        86
+                    ]
+                },
+                {
+                    "nome_aluno": "João Ninguém",
+                    "frequencias": [
+                        0
+                    ],
+                    "notas": [
+                        0
+                    ]
+                }
+            ]
         }
     """
     try:
@@ -114,7 +157,7 @@ async def processar_documento(arquivo: UploadFile = File(...)):
 
         # Retorna resultado do gemini
         resposta_json = resposta.json()
-        # Dentro dos metadados que o Gemini retorna, obtém o real retorno do prompt, ou seja, os campos Valor, CNPJ e Data
+        # Dentro dos metadados que o Gemini retorna, obtém o real retorno do prompt
         campos = resposta_json["candidates"][0]["content"]["parts"][0]["text"]
         # O Gemini retorna os valores dentro de um markdown, por isso, substitui as partes que definem o markdown com strings vazias
         campos_formatados = json.loads(
@@ -128,11 +171,30 @@ async def processar_documento(arquivo: UploadFile = File(...)):
             retorno["payload"].append(
                 {
                     "nome": aluno["nome_aluno"],
-                    "media_frequencia": sum(aluno["frequencias"]) / len(aluno["frequencias"]) if sum(aluno["frequencias"]) else 0,
-                    "media_notas": sum(aluno["notas"]) / len(aluno["notas"]) if sum(aluno["frequencias"]) else 0,
+                    "media_frequencia": round(sum(aluno["frequencias"]) / len(aluno["frequencias"]), 2) if sum(aluno["frequencias"]) else 0,
+                    "media_notas": round(sum(aluno["notas"]) / len(aluno["notas"]), 2) if sum(aluno["frequencias"]) else 0,
                 }
             )
-        
+
+        # Converte os dados do payload para um DataFrame
+        df_resumo = pd.DataFrame(retorno["payload"])
+
+        # Converte os dados brutos para DataFrame também
+        df_detalhado = pd.DataFrame(retorno["dados_brutos"])
+
+        # Cria um nome de arquivo com timestamp pra evitar sobrescrita
+        nome_arquivo = f"notas_alunos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+        # Caminho onde o arquivo será salvo (raiz do projeto)
+        caminho_arquivo = os.path.join("/app", nome_arquivo)
+
+        # Escreve os dados no Excel, em duas abas
+        with pd.ExcelWriter(caminho_arquivo, engine="openpyxl") as writer:
+            df_resumo.to_excel(writer, sheet_name="Resumo", index=False)
+            df_detalhado.to_excel(writer, sheet_name="Detalhado", index=False)
+
+        print(f"Arquivo salvo em: {caminho_arquivo}")
+
         return retorno
 
     except Exception as e:
